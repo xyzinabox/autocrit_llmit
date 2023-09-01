@@ -202,12 +202,15 @@ if __name__ == "__main__":
     model.resize_token_embeddings(len(tokenizer))
 
     if args.gradient_checkpointing:
+        print('model gradient')
         model.gradient_checkpointing_enable()
 
     if args.downscale_weight:
+        print('model score')
         model.score.weight.data *= 0.1
 
     if args.num_unfrozen_layers is not None and args.num_unfrozen_layers > 0:
+        print('model freeze')
         frozen = False
 
         try:
@@ -220,18 +223,22 @@ if __name__ == "__main__":
             pass
 
         try:
+            print('try freeze')
             for layer in model.model.layers[:-args.num_unfrozen_layers]:
                 layer.requires_grad_(False)
             frozen = True
         except AttributeError:
+            print('pass attr')
             pass
 
         if not frozen:
             raise ValueError("Could not freeze layers, modify the code to support your architecture.")
 
     if args.only_eval:
+        print('args eval')
         model, *eval_dataloaders = accelerator.prepare(model, *eval_dataloaders)
     else:
+        print('args opt')
         opt = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.95), eps=1e-08, weight_decay=args.weight_decay)
 
         scheduler = CosineAnnealingLR(opt, T_max=len(dataloader) * args.epochs, eta_min=args.min_lr or args.lr)
@@ -241,7 +248,9 @@ if __name__ == "__main__":
     step = 0
 
     tbar = tqdm(range(args.epochs * len(dataloader)), disable=not accelerator.is_main_process or args.only_eval)
+    print('after tbar')
     for iepoch in range(args.epochs):
+        print('iepoch')
         for batch in dataloader:
             if step % args.eval_interval == 0 or step == tbar.total - 1:
                 for dataset_name, eval_dataloader in zip(args.calibration_datasets + [args.dataset], eval_dataloaders):
