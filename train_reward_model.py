@@ -139,7 +139,6 @@ if __name__ == "__main__":
     accelerator.print(args.dataset, dataset)
 
     def to_vicuna_format(sample):
-        print('vicuna format')
         prompt = sample["prompt"].strip()
         prompt = prompt.replace("\n\nHuman: ", "</s>USER: ") \
                        .replace("\n\nAssistant: ", " ASSISTANT: ") \
