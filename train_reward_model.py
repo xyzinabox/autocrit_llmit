@@ -37,7 +37,6 @@ args = parser.parse_args()
 
 
 def plot_calibration(model_name: str, dataset_name: str, delta_scores: np.ndarray) -> str:
-    print('a')
     space = np.linspace(0, 4, 32)
     perfect_calibration = 1 / (1 + np.exp(-space))
 
@@ -124,7 +123,6 @@ if __name__ == "__main__":
         }
 
     def collate_fn(batch):
-        print('b')
         input_ids = sum([[x["rejected_input_ids"], x["selected_input_ids"]] for x in batch], [])
         return tokenizer.pad({"input_ids": input_ids}, padding=True, return_tensors="pt")
 
