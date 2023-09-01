@@ -193,10 +193,12 @@ if __name__ == "__main__":
     eval_dataloaders.append(torch.utils.data.DataLoader(tokenized["test"], shuffle=False, batch_size=args.batch_size, collate_fn=collate_fn))
 
     if transformers.__version__ >= "4.30.0":
+        print('model if transformers')
         kwargs = {"load_in_4bit": args.load_in_4bit}
     else:
+        print('mode if not')
         kwargs = {}
-    print('model if transformers')
+    print('line before model')
     model = AutoModelForSequenceClassification.from_pretrained(args.model_path, revision=args.revision, num_labels=1, **kwargs)
     model.config.pad_token_id = tokenizer.pad_token_id
     model.resize_token_embeddings(len(tokenizer))
