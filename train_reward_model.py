@@ -124,7 +124,6 @@ if __name__ == "__main__":
         }
 
     def collate_fn(batch):
-        print('collate')
         input_ids = sum([[x["rejected_input_ids"], x["selected_input_ids"]] for x in batch], [])
         return tokenizer.pad({"input_ids": input_ids}, padding=True, return_tensors="pt")
 
