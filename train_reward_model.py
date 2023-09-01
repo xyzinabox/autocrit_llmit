@@ -118,7 +118,6 @@ if __name__ == "__main__":
     tokenizer.truncation_side = "left"
 
     def tokenize(prompt, selected, rejected, tokenizer):
-        print('def tokenize')
         return {
             "selected_input_ids": tokenizer(prompt + selected + tokenizer.eos_token, truncation=True, max_length=args.seq_length).input_ids,
             "rejected_input_ids": tokenizer(prompt + rejected + tokenizer.eos_token, truncation=True, max_length=args.seq_length).input_ids,
