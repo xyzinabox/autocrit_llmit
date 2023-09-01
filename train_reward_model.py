@@ -109,6 +109,7 @@ if __name__ == "__main__":
     )
 
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path or args.model_path)
+    print('after tokenizer')
 
     if args.add_oasst_tokens:
         tokenizer.add_tokens(["<|assistant|>", "<|prefix_begin|>", "<|prefix_end|>", "<|prompter|>", "<|system|>"])
@@ -117,23 +118,29 @@ if __name__ == "__main__":
     tokenizer.truncation_side = "left"
 
     def tokenize(prompt, selected, rejected, tokenizer):
+        print('def tokenize')
         return {
             "selected_input_ids": tokenizer(prompt + selected + tokenizer.eos_token, truncation=True, max_length=args.seq_length).input_ids,
             "rejected_input_ids": tokenizer(prompt + rejected + tokenizer.eos_token, truncation=True, max_length=args.seq_length).input_ids,
         }
 
     def collate_fn(batch):
+        print('collate')
         input_ids = sum([[x["rejected_input_ids"], x["selected_input_ids"]] for x in batch], [])
         return tokenizer.pad({"input_ids": input_ids}, padding=True, return_tensors="pt")
 
     dataset = load_dataset(args.dataset)
+    print('load dataset')
     if "chosen" in dataset["train"].column_names:
+        print('chosen in train')
         dataset = dataset.rename_column("chosen", "selected")
     if "replies" in dataset["train"].column_names:
+        print('replies in train')
         dataset = dataset.map(lambda x: {"selected": x["replies"][0], "rejected": x["replies"][1]}, remove_columns=["replies"])
     accelerator.print(args.dataset, dataset)
 
     def to_vicuna_format(sample):
+        print('vicuna format')
         prompt = sample["prompt"].strip()
         prompt = prompt.replace("\n\nHuman: ", "</s>USER: ") \
                        .replace("\n\nAssistant: ", " ASSISTANT: ") \
@@ -149,6 +156,7 @@ if __name__ == "__main__":
         return {"prompt": prompt, "selected": selected, "rejected": rejected}
 
     def to_oa_format(sample):
+        print('to oa format')
         prompt = sample["prompt"].strip()
         prompt = prompt.replace("\n\nHuman: ", "</s><|prompter|>") \
                        .replace("\n\nAssistant: ", "</s><|assistant|>") \
@@ -162,12 +170,14 @@ if __name__ == "__main__":
         return {"prompt": prompt, "selected": selected, "rejected": rejected}
 
     if args.add_oasst_tokens:
+        print('oasst token')
         dataset = dataset.map(to_oa_format)
     else:
         dataset = dataset.map(to_vicuna_format)
 
     eval_dataloaders = []
     for name in args.calibration_datasets:
+        print('calibration test')
         calibration_dataset = load_dataset(name)
         if "test" in calibration_dataset:
             calibration_dataset = calibration_dataset["test"]
@@ -175,10 +185,11 @@ if __name__ == "__main__":
             calibration_dataset = calibration_dataset["train"]
 
         accelerator.print(name, calibration_dataset)
+        print('calibration test tokenizer')
         tokenized = calibration_dataset.map(tokenize, input_columns=["prompt", "selected", "rejected"], fn_kwargs=dict(tokenizer=tokenizer), desc="Tokenizing")
         dataloader = torch.utils.data.DataLoader(tokenized, shuffle=False, batch_size=args.batch_size, collate_fn=collate_fn)
         eval_dataloaders.append(dataloader)
-
+    (print('tokenizing for calibration test'))
     tokenized = dataset.map(tokenize, input_columns=["prompt", "selected", "rejected"], fn_kwargs=dict(tokenizer=tokenizer), desc="Tokenizing")
     dataloader = torch.utils.data.DataLoader(tokenized["train"], shuffle=True, batch_size=args.batch_size, collate_fn=collate_fn)
     eval_dataloaders.append(torch.utils.data.DataLoader(tokenized["test"], shuffle=False, batch_size=args.batch_size, collate_fn=collate_fn))
@@ -187,6 +198,7 @@ if __name__ == "__main__":
         kwargs = {"load_in_4bit": args.load_in_4bit}
     else:
         kwargs = {}
+    print('model if transformers')
     model = AutoModelForSequenceClassification.from_pretrained(args.model_path, revision=args.revision, num_labels=1, **kwargs)
     model.config.pad_token_id = tokenizer.pad_token_id
     model.resize_token_embeddings(len(tokenizer))
@@ -201,10 +213,12 @@ if __name__ == "__main__":
         frozen = False
 
         try:
+            print('try ok')
             for layer in model.transformer.h[:-args.num_unfrozen_layers]:
                 layer.requires_grad_(False)
             frozen = True
         except AttributeError:
+            print('pass ok')
             pass
 
         try:
